@@ -1,0 +1,27 @@
+<form (ngSubmit)="onSubmit()" novalidate>
+  <div class="field">
+      <label>Your CSV:</label>  
+      <input type="file" name="file"  accept=".csv" (change)="onFileSelected($event)" />  
+  </div>
+  <div class="submit">
+    <button type="submit">Submit</button>  
+  </div>
+</form>
+
+<p>{{ returned_csv }}</p>
+
+<form (ngSubmit)="onStream()" novalidate>
+  <div class="field">
+    <label>Ask a question:</label>
+    <input type="text" name="question" (change)="onQuestionGiven($event.target.value)"/>
+  </div>
+  <div class="submit">
+    <button type="submit">Submit Question</button>
+  </div>
+</form>
+
+<p>{{ model_output }}</p>
+
+
+
+<router-outlet />

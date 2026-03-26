@@ -1,0 +1,48 @@
+.field {
+	label {
+		display: block ;
+		font-weight: bold ;
+        padding-bottom: 5px;
+	}
+}
+
+input[type="text"] {
+  margin-left: 30px;
+  border: 2px solid #000000; /* Width, Style (solid/dashed/dotted), and Color */
+  border-radius: 4px;       /* Rounds the corners */
+}
+
+input[type="text"]:focus {
+  border-color: #3498db; /* Changes border color on click */
+  outline: none;         /* Removes the default browser outline */
+  box-shadow: 0 0 5px rgba(46, 204, 113, 0.5); /* Optional: Adds a glow effect */
+}
+
+input[type=file]::file-selector-button{
+    background-color: #0084d4 ;
+    border-radius: 5px 5px 5px 5px ;
+    border-width: 0px 0px 0px 0px ;
+    color: #ffffff ;
+    cursor: pointer ;
+    font-size: inherit ;
+    padding: 5px 2px 5px 5px ;
+    margin-left: 30px;
+}
+
+input[type=file]::file-selector-button:hover {
+  background-color: #81ecec;
+}
+
+.submit {
+	margin-top: 25px ;
+
+	button {
+		background-color: #0084d4 ;
+		border-radius: 5px 5px 5px 5px ;
+		border-width: 0px 0px 0px 0px ;
+		color: #ffffff ;
+		cursor: pointer ;
+		font-size: inherit ;
+		padding: 13px 13px 13px 10px ;
+	}
+}

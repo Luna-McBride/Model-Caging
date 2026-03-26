@@ -22,6 +22,11 @@ def model_stream():
     stream = new_rag.stream_model(question)
     return Response(stream_with_context(stream), mimetype='text/event-stream')
 
+@app.route("/api/agent/stream/", methods = ["GET"])
+def agent_stream():
+    stream = new_rag.stream_agent(question)
+    return Response(stream_with_context(stream), mimetype='text/event-stream')
+
 @app.route("/api/question/", methods = ["POST"])
 def update_question():
     question = request.form.get("question")
@@ -29,9 +34,12 @@ def update_question():
 
 @app.route("/api/upload/csv/", methods = ["GET", "POST", "PUT"])
 def upload_csv():
-    file = request.files['file']
-    text_content = file.read().decode("utf-8")
-    return jsonify({"file": text_content})
+    try:
+        file = request.files['file']
+        new_rag.fill_database(file)
+        return jsonify({"status": 200, "info": "File uploaded to Vector Database!"})
+    except Exception as e:
+        return jsonify({"status": 500, "info": f"Error: {e}"})
 
 @app.after_request
 def after_request(response):

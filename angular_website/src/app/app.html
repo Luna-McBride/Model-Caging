@@ -10,7 +10,7 @@
 
 <p>{{ returned_csv }}</p>
 
-<form (ngSubmit)="onStream()" novalidate>
+<form [hidden]="!csv_submitted" (ngSubmit)="onStream()" novalidate>
   <div class="field">
     <label>Ask a question:</label>
     <input type="text" name="question" (change)="onQuestionGiven($event.target.value)"/>

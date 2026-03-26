@@ -19,6 +19,11 @@ export class ModelService {
             observe: 'events', reportProgress: true})
     }
 
+    getAgentStream(): Observable<any>{
+        return this._http.get(`${this.apiURL}agent/stream/`, {responseType: 'text',
+            observe: 'events', reportProgress: true})
+    }
+
     updateQuestion(question: string){
         return this._http.post(`${this.apiURL}question/`, JSON.stringify({"question": question}))
     }

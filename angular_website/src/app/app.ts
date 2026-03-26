@@ -13,11 +13,13 @@ import { ModelService } from './services/services';
 export class App {
   protected readonly title = signal('angular_website');
 
-  csv_submitted = false;
+  csv_submitted: boolean = false;
   returned_csv: string = "";
   public file: File | null = null;
   question: string = "";
   model_output: string = "";
+
+  file_upload_failure:string = "File failed to upload.";
 
   constructor(private _modelService:ModelService, private _changeDetectorRef:ChangeDetectorRef) {}
 
@@ -42,12 +44,27 @@ export class App {
 
     const formData = new FormData();
     formData.append('file', this.file, this.file.name);
+
+
+
     this._modelService.postCSV(formData).subscribe((results: any) => {
-      this.returned_csv = results.file;
+      if (results.status == 200){
+        this.returned_csv = results.info;
+      }
+      else {
+        console.log(results.info)
+        this.returned_csv = this.file_upload_failure;
+      }
+      this._changeDetectorRef.detectChanges();
     });
 
     console.log(this.returned_csv);
-    this.csv_submitted = true;
+    if (this.returned_csv !== "" && this.returned_csv !== this.file_upload_failure){
+      this.csv_submitted = true;
+      this._changeDetectorRef.markForCheck();
+      this._changeDetectorRef.detectChanges();
+    }
+    
   }
 
   onStream() {
@@ -56,13 +73,12 @@ export class App {
     });
 
     
-    this._modelService.getStream().subscribe((event: any) => {
+    this._modelService.getAgentStream().subscribe((event: any) => {
       if (event.type === HttpEventType.DownloadProgress) {
-        // Partial text data arrives here
-        
         this.model_output = event.partialText;
-        console.log(this.model_output);
+        this._changeDetectorRef.markForCheck();
         this._changeDetectorRef.detectChanges();
+        console.log(this.model_output);
       }
     });
   }

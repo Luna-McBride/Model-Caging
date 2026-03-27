@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import Annotated
+
 import os
 import model_dev
 from dotenv import load_dotenv

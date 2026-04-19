@@ -16,11 +16,11 @@ from langchain_community.document_loaders import CSVLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.docstore.in_memory import InMemoryDocstore
 
-#from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-#load_dotenv() 
+load_dotenv() 
 
-#os.environ["HUGGINGFACEHUB_API_TOKEN"] = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+os.environ["HUGGINGFACEHUB_API_TOKEN"] = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 class rag_model:
     def __init__(self, model_type = "HuggingFaceTB/SmolLM2-1.7B-Instruct",

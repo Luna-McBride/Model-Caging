@@ -1,19 +1,29 @@
+from __future__ import annotations
+from typing import Annotated, List, Tuple
+
+from transformers import BitsAndBytesConfig
+
 import os
-import time
+import torch
 import faiss
 import tempfile
-from langchain.tools import tool
 from langchain.agents import create_agent
+from langchain_core.documents import Document
 from langchain.chat_models import init_chat_model
-from langchain.messages import AIMessage, HumanMessage
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_community.document_loaders import CSVLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.docstore.in_memory import InMemoryDocstore
 
+from dotenv import load_dotenv
+
+load_dotenv() 
+
+os.environ["HUGGINGFACEHUB_API_TOKEN"] = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+
 class rag_model:
-    def __init__(self, model_type = "HuggingFaceTB/SmolLM2-360M-Instruct",
+    def __init__(self, model_type = "HuggingFaceTB/SmolLM2-1.7B-Instruct",
         embeddings_type = "sentence-transformers/all-MiniLM-l6-v2", doc_store = InMemoryDocstore()):
         self.model = model_type
         self.embeddings = embeddings_type
@@ -25,11 +35,18 @@ class rag_model:
 
     @model.setter
     def model(self, model_type):
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
         self._model = init_chat_model(
             model_type,
-            model_provider = "huggingface",
-            temperature = 0.7,
-            max_tokens = 1024,
+            model_provider="huggingface",
+            temperature=0.7,
+            max_tokens=1024,
+            quantization_config=bnb_config,
         )
 
     @property
@@ -38,29 +55,11 @@ class rag_model:
 
     @agent.setter
     def agent(self, model):
-        tools = [self.retrieve_context]
-        # If desired, specify custom instructions
-        system_prompt = (
-            """You are an expert in composing functions. You are given a question and a set of possible functions. 
-            Based on the question, you will need to make one or more function/tool calls to achieve the purpose. 
-            If none of the functions can be used, point it out and refuse to answer. 
-            If the given question lacks the parameters required by the function, also point it out.
-
-            You have access to the following tools:
-            <tools>{{ retrieve_context }}</tools>
-
-            This tool retrieves context from a CSV file. All prompts are expected to be related to the contents of the CSV file stored in the context.
-
-            It takes only one argument, being the query. The CSV is stored in a vector database, so the query is used to pull relevant chunks from the database.
-
-            The output MUST strictly adhere to the following format, and NO other text MUST be included.
-            The example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list '[]'.
-            <tool_call>[
-            {"name": "func_name1", "arguments": {"argument1": "value1", "argument2": "value2"}},
-            ... (more tool calls as required)
-            ]</tool_call>"""
-        )
-        self._agent = create_agent(model, tools, system_prompt = system_prompt)
+        system_prompt = """Using the information contained in the context,
+                    give a comprehensive answer to the question.
+                    Respond only to the question asked, response should be concise and relevant to the question.
+                    If the answer cannot be deduced from the context, say you don't know."""
+        self._agent = create_agent(model, [], system_prompt = system_prompt)
 
     @property
     def embeddings(self):
@@ -95,18 +94,26 @@ class rag_model:
             loader = CSVLoader(file_path=temp_file.name)
             docs = loader.load()
 
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            add_start_index=True,
-        )
-        all_splits = text_splitter.split_documents(docs)
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=200,
+                add_start_index=True,
+            )
+            all_splits = text_splitter.split_documents(docs)
 
-        self.vector_db.add_documents(documents=all_splits)
+            self.vector_db.add_documents(documents=all_splits)
 
-    @tool(response_format="content_and_artifact")
-    def retrieve_context(self, query):
-        """Retrieve information to help answer a query."""
+    def retrieve_context(self, query: Annotated[str, "The question being asked."]) -> Tuple[str, List[Document]]:
+        """Retrieve information to help answer a query using a similarity search on the vector database.
+        
+        Args:
+            query: the question being asked.
+
+        Returns:
+            serialized: a serialized version of the documents collected from the vector database.
+            retrieved_docs: the documents retrieved from the vector database's similarity search.
+        
+        """
         retrieved_docs = self._vector_db.similarity_search(query, k=2)
         serialized = "\n\n".join(
             (f"Source: {doc.metadata}\nContent: {doc.page_content}")
@@ -121,8 +128,19 @@ class rag_model:
     def stream_agent(self, message):
         self.agent = self.model
 
+        context, _ = self.retrieve_context(message)
+        final_prompt = {
+                "role": "user",
+                "content": f"""Context:
+                    {context}
+                    ---
+                    Now here is the question you need to answer.
+
+                    Question: {message}""",
+            }
+
         for chunk in self.agent.stream(
-            {"messages": [{"role": "user", "content": message}]},
+            {"messages": [final_prompt]},
             stream_mode="messages",
             version="v2",
         ):
